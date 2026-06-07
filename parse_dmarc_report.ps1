@@ -54,7 +54,7 @@ function Get-DmarcXmlFiles {
     }
 }
 
-function Parse-DmarcReport {
+function Convert-DmarcReport {
     <#
         Parses a DMARC aggregate report XML document and converts each record into a PowerShell object.
         This function extracts metadata, policy settings, and per-record authentication results.
@@ -140,7 +140,7 @@ foreach ($file in $files) {
     try {
         Write-Host "Parsing: $($file.FullName)"
         $xml = [xml](Get-Content -Path $file.FullName -ErrorAction Stop)
-        $results += Parse-DmarcReport -Xml $xml -SourceFile $file.FullName
+        $results += Convert-DmarcReport -Xml $xml -SourceFile $file.FullName
     } catch {
         # If parsing fails for a file, log a warning and continue to the next file.
         Write-Warning "Failed to parse $($file.FullName): $_"

@@ -1,8 +1,34 @@
 # DMARC Report Tools
 
-This repository contains two PowerShell helper scripts for working with DMARC aggregate report files.
+This repository contains PowerShell helper scripts for working with DMARC aggregate report files.
 
-## Scripts
+## `run_dmarc_workflow.ps1`
+
+Runs the full workflow for a DMARC report folder.
+
+Usage:
+```powershell
+.\run_dmarc_workflow.ps1 'C:\path\to\folder' 'C:\path\to\output.csv'
+```
+
+Parameters:
+- `Path` - Directory to scan for archive files and DMARC XML reports.
+- `OutputFile` - CSV file path where parsed report rows will be written.
+
+Behavior:
+- Extracts supported archives in the folder, deleting archive files after extraction.
+- Parses extracted DMARC XML files in the same folder.
+- Writes parsed rows to the specified CSV file.
+- Deletes processed XML files after parsing.
+
+Known limitations:
+- `.tar.gz` and `.tar.bz2` extraction require the external `tar` command to be available.
+- ZIP extraction uses the Windows Shell COM object, which is only available on Windows.
+- If the output CSV path is invalid or not writable, the workflow may fail.
+
+## Helper Scripts
+The main script `run_dmarc_workflow.ps1` uses the following helper scripts. These scripts can be run independently if so desired.
+
 
 ### `extract_files.ps1`
 Extracts archive files from a given directory.

@@ -18,7 +18,7 @@ param (
     [Parameter(Position = 2, Mandatory = $false)]
     [string]$OutputCsv,
 
-    [Parameter(Mandatory = $false)]
+    [Parameter(Position = 3, Mandatory = $false)]
     [object]$DeleteOriginal = $false
 )
 

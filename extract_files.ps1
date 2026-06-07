@@ -3,7 +3,10 @@
 # If the optional parameter $DeleteOriginal is set to $true, the original archive files will be deleted after extraction.
 
 param (
-    [string]$Directory,
+    [Parameter(Position = 0, Mandatory = $false)]
+    [string]$Directory = ".",
+
+    [Parameter(Mandatory = $false)]
     [bool]$DeleteOriginal = $false
 )
 

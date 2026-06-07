@@ -37,6 +37,7 @@ function Get-DmarcXmlFiles {
         if ($item.PSIsContainer) {
             Get-ChildItem -Path $Path -Filter *.xml -File -Recurse:$Recursive
         } else {
+
             # If the path is a file, only return it when it is an XML file.
             if ($item.Extension -eq '.xml') {
                 @($item)
@@ -46,6 +47,7 @@ function Get-DmarcXmlFiles {
             }
         }
     } else {
+ 
         # Report an error when the provided path does not exist.
         Write-Error "Path not found: $Path"
         return @()
@@ -119,6 +121,7 @@ function Parse-DmarcReport {
         [pscustomobject]$properties
     }
 }
+
 
 # Find the XML files to process from the provided path.
 $files = Get-DmarcXmlFiles -Path $Path -Recursive:$Recursive

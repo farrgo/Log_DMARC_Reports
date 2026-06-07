@@ -53,6 +53,44 @@ function Convert-ToBool {
     return $stringValue -in @('true', '1', 'yes', 'y')
 }
 
+function Get-NslookupResult {
+    <#
+        Runs NSLOOKUP for a given IP address and returns the first resolved name or the raw output if no PTR exists.
+    #>
+    param (
+        [string]$IpAddress
+    )
+
+    # If no IP was provided, return an empty string instead of attempting NSLOOKUP.
+    if ([string]::IsNullOrWhiteSpace($IpAddress)) {
+        return ''
+    }
+
+    try {
+        # Run the NSLOOKUP command and capture both stdout and stderr.
+        $output = & nslookup $IpAddress 2>&1
+
+        # If NSLOOKUP returned a non-zero exit code, return the raw output as an error indicator.
+        if ($LASTEXITCODE -ne 0) {
+            return ($output -join ' | ')
+        }
+
+        # Search the NSLOOKUP output for a PTR record name line.
+        $nameMatch = $output | Select-String -Pattern 'Name:\s*(.+)$' | Select-Object -First 1
+
+        # If a Name line was found, return the resolved hostname.
+        if ($nameMatch) {
+            return $nameMatch.Matches[0].Groups[1].Value.Trim()
+        }
+
+        # If no Name line was found, return the full raw NSLOOKUP output.
+        return ($output -join ' | ')
+    } catch {
+        # If the NSLOOKUP command itself throws an exception, return that message.
+        return "NSLOOKUP failed: $($_.Exception.Message)"
+    }
+}
+
 function Get-DmarcXmlFiles {
     <#
         Returns XML file objects from the provided path.
@@ -152,6 +190,7 @@ function Convert-DmarcReport {
 
         # Add per-record fields to the copied property bag.
         $properties.SourceIp = $row.source_ip
+        $properties.Nslookup = Get-NslookupResult -IpAddress $row.source_ip
         $properties.Count = [int]$row.count
         $properties.Disposition = $row.policy_evaluated.disposition
         $properties.DkimResult = $row.policy_evaluated.dkim
@@ -159,7 +198,7 @@ function Convert-DmarcReport {
         $properties.HeaderFrom = $identifiers.header_from
         $properties.SpfAuth = ($spfResults -join '; ')
         $properties.DkimAuth = ($dkimResults -join '; ')
-
+        
         # Output a custom object for each parsed record.
         [pscustomobject]$properties
     }
@@ -213,8 +252,18 @@ $results | Format-Table -AutoSize
 # If an output CSV path was supplied, write the parsed results to that file.
 if ($OutputCsv) {
     try {
-        $results | Export-Csv -Path $OutputCsv -NoTypeInformation -Force
-        Write-Host "Exported results to $OutputCsv"
+        $csvExists = Test-Path -Path $OutputCsv
+
+        if ($csvExists) {
+            # If the CSV file already exists, append to it without writing a new header.
+            $results | Export-Csv -Path $OutputCsv -NoTypeInformation -Force -Append
+            Write-Host "Appended results to existing CSV: $OutputCsv"
+
+        } else {
+            # If the CSV file does not exist, create it and write the results with a header.
+            $results | Export-Csv -Path $OutputCsv -NoTypeInformation -Force
+            Write-Host "Exported results to $OutputCsv"
+        }
     } catch {
         Write-Error "Failed to export CSV: $_"
     }

@@ -13,14 +13,45 @@ param (
     [string]$Path = ".",
 
     [Parameter(Position = 1, Mandatory = $false)]
-    [switch]$Recursive,
+    [object]$Recursive = $false,
 
     [Parameter(Position = 2, Mandatory = $false)]
     [string]$OutputCsv,
 
     [Parameter(Mandatory = $false)]
-    [bool]$DeleteOriginal = $false
+    [object]$DeleteOriginal = $false
 )
+
+function Convert-ToBool {
+    
+    <#
+        Converts various input types to a boolean value.
+        Supports boolean, switch, integer, and common string representations of truthy values.
+    #>
+    
+    param (
+        [object]$Value
+    )
+
+    if ($null -eq $Value) {
+        return $false
+    }
+
+    if ($Value -is [bool]) {
+        return $Value
+    }
+
+    if ($Value -is [switch]) {
+        return [bool]$Value
+    }
+
+    if ($Value -is [int]) {
+        return $Value -ne 0
+    }
+
+    $stringValue = $Value.ToString().Trim().ToLowerInvariant()
+    return $stringValue -in @('true', '1', 'yes', 'y')
+}
 
 function Get-DmarcXmlFiles {
     <#
@@ -72,6 +103,9 @@ function Convert-DmarcReport {
     $reportMetadata = $Xml.feedback.report_metadata
     $policyPublished = $Xml.feedback.policy_published
 
+    # Use a portable Unix epoch value instead of the PS 7+ UnixEpoch property.
+    $unixEpoch = [datetime]'1970-01-01T00:00:00Z'
+
     # Build a base ordered property bag with values from the report header.
     $baseProperties = [ordered]@{
         SourceFile = $SourceFile
@@ -79,8 +113,8 @@ function Convert-DmarcReport {
         OrgName = $reportMetadata.org_name
         OrgEmail = $reportMetadata.email
         ExtraContactInfo = $reportMetadata.extra_contact_info
-        DateRangeBegin = [datetime]::UnixEpoch.AddSeconds([int]$reportMetadata.date_range.begin).ToLocalTime()
-        DateRangeEnd = [datetime]::UnixEpoch.AddSeconds([int]$reportMetadata.date_range.end).ToLocalTime()
+        DateRangeBegin = $unixEpoch.AddSeconds([int]$reportMetadata.date_range.begin).ToLocalTime()
+        DateRangeEnd = $unixEpoch.AddSeconds([int]$reportMetadata.date_range.end).ToLocalTime()
         PolicyDomain = $policyPublished.domain
         PolicyAdkim = $policyPublished.adkim
         PolicyAspf = $policyPublished.aspf
@@ -110,8 +144,13 @@ function Convert-DmarcReport {
             $dkimResults += "{0}:{1}" -f $dkim.domain, $dkim.result
         }
 
-        # Clone the shared report metadata and add per-record fields.
-        $properties = $baseProperties.Clone()
+        # Copy the shared report metadata into a new ordered property bag.
+        $properties = [ordered]@{}
+        foreach ($item in $baseProperties.GetEnumerator()) {
+            $properties[$item.Key] = $item.Value
+        }
+
+        # Add per-record fields to the copied property bag.
         $properties.SourceIp = $row.source_ip
         $properties.Count = [int]$row.count
         $properties.Disposition = $row.policy_evaluated.disposition
@@ -127,8 +166,12 @@ function Convert-DmarcReport {
 }
 
 
+# Convert incoming parameters to boolean flags for shell compatibility.
+$RecursiveFlag = Convert-ToBool -Value $Recursive
+$DeleteOriginalFlag = Convert-ToBool -Value $DeleteOriginal
+
 # Find the XML files to process from the provided path.
-$files = Get-DmarcXmlFiles -Path $Path -Recursive:$Recursive
+$files = Get-DmarcXmlFiles -Path $Path -Recursive:$RecursiveFlag
 
 # If no XML files were found, print a message and exit with failure.
 if (-not $files) {
@@ -146,15 +189,15 @@ foreach ($file in $files) {
         $xml = [xml](Get-Content -Path $file.FullName -ErrorAction Stop)
         $results += Convert-DmarcReport -Xml $xml -SourceFile $file.FullName
 
-        # Delete the original XML file if the $DeleteOriginal parameter is set to $true.
-        if ($DeleteOriginal) {
+        # Delete the original XML file if the DeleteOriginal flag is set.
+        if ($DeleteOriginalFlag) {
             Remove-Item -Path $file.FullName -Force
             Write-Host "Deleted original file: $($file.FullName)"
         }
 
     } catch {
         # If parsing fails for a file, log a warning and continue to the next file.
-        Write-Warning "Failed to parse $($file.FullName): $_"
+        Write-Warning "Failed to parse $($file.FullName): $($_.Exception.Message)"
     }
 }
 

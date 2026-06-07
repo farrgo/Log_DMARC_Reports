@@ -103,5 +103,5 @@ Troubleshooting:
 
 ## Notes
 - Both scripts were created for manual use in a Windows PowerShell environment.
-- The shortcut file `Log_DMARC_Reports.lnk` can have its properties modified to run the `parse_dmarc_report.ps1` script repeatedly *without* having to type the parameters each time.
+- The shortcut file `Log_DMARC_Reports.lnk` can have its properties modified to run the `run_dmarc_workflow.ps1` script repeatedly *without* having to type the parameters each time.
 - If you modify either script, test on one file or directory first before processing larger batches.

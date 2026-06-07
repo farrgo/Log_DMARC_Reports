@@ -6,6 +6,7 @@
  - Path: file or directory to search for DMARC XML files.
  - Recursive: include subdirectories when searching directories.
  - OutputCsv: optional path to write extracted results as CSV.
+ - DeleteOriginal: optional flag to delete original XML files after parsing.
  #>
 param (
     [Parameter(Position = 0, Mandatory = $false)]
@@ -15,7 +16,10 @@ param (
     [switch]$Recursive,
 
     [Parameter(Mandatory = $false)]
-    [string]$OutputCsv
+    [string]$OutputCsv,
+
+    [Parameter(Mandatory = $false)]
+    [bool]$DeleteOriginal = $false
 )
 
 function Get-DmarcXmlFiles {
@@ -141,6 +145,13 @@ foreach ($file in $files) {
         Write-Host "Parsing: $($file.FullName)"
         $xml = [xml](Get-Content -Path $file.FullName -ErrorAction Stop)
         $results += Convert-DmarcReport -Xml $xml -SourceFile $file.FullName
+
+        # Delete the original XML file if the $DeleteOriginal parameter is set to $true.
+        if ($DeleteOriginal) {
+            Remove-Item -Path $file.FullName -Force
+            Write-Host "Deleted original file: $($file.FullName)"
+        }
+
     } catch {
         # If parsing fails for a file, log a warning and continue to the next file.
         Write-Warning "Failed to parse $($file.FullName): $_"

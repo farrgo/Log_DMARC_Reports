@@ -53,7 +53,7 @@ Usage examples:
 Parameters:
 - `Path` - File or directory path to read DMARC XML files from.
 - `Recursive` - Optional. If `$true`, searches subdirectories for `.xml` files.
-- `OutputCsv` - Optional. Path to write parsed report rows as CSV.
+- `OutputCsv` - Optional. Path to write parsed report rows as a CSV file.
 - `DeleteOriginal` - Optional. If `$true`, deletes processed XML files after parsing.
 
 Behavior:

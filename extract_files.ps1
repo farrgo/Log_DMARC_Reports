@@ -15,8 +15,53 @@ if (-not (Test-Path $Directory)) {
     Write-Error "Directory not found: $Directory"
     exit 1
 }
+
+# Function to get all archive files in the specified directory.
+function Get-ArchiveFiles {
+    param (
+        [string]$DirectoryPath
+    )
+
+    $path = Join-Path -Path $DirectoryPath -ChildPath '*'
+    Get-ChildItem -Path $path -ErrorAction SilentlyContinue | Where-Object {
+        -not $_.PSIsContainer -and (
+            $_.Name.ToLowerInvariant().EndsWith('.zip') -or
+            $_.Name.ToLowerInvariant().EndsWith('.tar.gz') -or
+            $_.Name.ToLowerInvariant().EndsWith('.tar.bz2')
+        )
+    }
+}
+
+# Function to extract .zip files using the Shell.Application COM object.
+function Expand-ZipArchive {
+    param (
+        [string]$ZipPath,
+        [string]$DestinationPath
+    )
+
+    # Make sure the destination directory exists. Create it if it doesn't.
+    if (-not (Test-Path $DestinationPath)) {
+        New-Item -ItemType Directory -Path $DestinationPath | Out-Null
+    }
+
+    # Use the Shell.Application COM object to extract the ZIP file. This method is compatible with Windows and does not require external tools.
+    $shell = New-Object -ComObject Shell.Application
+    $zip = $shell.NameSpace($ZipPath)
+    if (-not $zip) {
+        throw "Unable to open ZIP archive: $ZipPath"
+    }
+
+    $destination = $shell.NameSpace($DestinationPath)
+    if (-not $destination) {
+        throw "Unable to open destination folder: $DestinationPath"
+    }
+
+    # Extract the contents of the ZIP file to the destination folder. The 0x10 flag suppresses progress dialogs and error messages.
+    $destination.CopyHere($zip.Items(), 0x10)
+}
+
 # Get all archive files in the directory.
-$archiveFiles = Get-ChildItem -Path $Directory -Include *.zip, *.tar.gz, *.tar.bz2 -File
+$archiveFiles = Get-ArchiveFiles -DirectoryPath $Directory
 
 # Loop through the collection of archive files and extract each one.
 foreach ($file in $archiveFiles) {
@@ -30,26 +75,38 @@ foreach ($file in $archiveFiles) {
 
     try {
  
-        if ($file.Extension -eq ".zip") {
+        if ($file.Name.ToLowerInvariant().EndsWith('.zip')) {
             # Extract .zip files.
-            Expand-Archive -Path $filePath -DestinationPath $destinationPath -Force
+            try {
+                Expand-ZipArchive -ZipPath $filePath -DestinationPath $destinationPath
+            } catch {
+                throw $_
+            }
         
-        } elseif ($file.Extension -eq ".gz" -and $file.BaseName.EndsWith(".tar")) {
-            # Extract .tar.gz files.
-            tar -xzf $filePath -C $Directory
+        } elseif ($file.Name.ToLowerInvariant().EndsWith('.tar.gz')) {
+            # Extract .tar.gz files if tar is available.
+            if (Get-Command tar -ErrorAction SilentlyContinue) {
+                tar -xzf $filePath -C $Directory
+            } else {
+                Write-Warning "tar command not found; cannot extract .tar.gz file: $fileName. Please install tar or extract this file manually."
+            }
 
-        } elseif ($file.Extension -eq ".bz2" -and $file.BaseName.EndsWith(".tar")) {
-            # Extract .tar.bz2 files.
-            tar -xjf $filePath -C $Directory
+        } elseif ($file.Name.ToLowerInvariant().EndsWith('.tar.bz2')) {
+            # Extract .tar.bz2 files if tar is available.
+            if (Get-Command tar -ErrorAction SilentlyContinue) {
+                tar -xjf $filePath -C $Directory
+            } else {
+                Write-Warning "tar command not found; cannot extract .tar.bz2 file: $fileName. Please install tar or extract this file manually."
+            }
         
         } else {
-            Write-Warning "Unsupported file type: $fileName"
+            Write-Warning "Unsupported file type: $fileName."
         }
    
         # Delete the original archive file if the $DeleteOriginal parameter is set to $true.
         if ($DeleteOriginal) {
             Remove-Item -Path $filePath -Force
-            Write-Host "Deleted original file: $fileName"
+            Write-Host "Deleted original file: $fileName."
         }
 
     } catch {

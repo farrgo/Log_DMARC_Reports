@@ -12,10 +12,10 @@ param (
     [Parameter(Position = 0, Mandatory = $false)]
     [string]$Path = ".",
 
-    [Parameter(Mandatory = $false)]
+    [Parameter(Position = 1, Mandatory = $false)]
     [switch]$Recursive,
 
-    [Parameter(Mandatory = $false)]
+    [Parameter(Position = 2, Mandatory = $false)]
     [string]$OutputCsv,
 
     [Parameter(Mandatory = $false)]

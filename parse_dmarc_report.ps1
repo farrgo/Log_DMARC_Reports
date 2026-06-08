@@ -230,8 +230,19 @@ foreach ($file in $files) {
 
         # Delete the original XML file if the DeleteOriginal flag is set.
         if ($DeleteOriginalFlag) {
+            
+            # Store the path to the file before deletion, excluding the file name.
+            $fileDirectory = Split-Path -Path $file.FullName -Parent
+
+            # Delete the file.
             Remove-Item -Path $file.FullName -Force
             Write-Host "Deleted original file: $($file.FullName)"
+
+            # If the directory is now empty after deletion, remove it as well.
+            if (-not (Get-ChildItem -Path $fileDirectory -File)) {
+                Remove-Item -Path $fileDirectory -Force
+                Write-Host "Deleted empty directory: $fileDirectory"
+            }
         }
 
     } catch {

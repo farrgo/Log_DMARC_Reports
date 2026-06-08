@@ -57,7 +57,7 @@ Write-Host "Running parse_dmarc_report.ps1 on: $folderPath"
 $oldErrorActionPreference = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
 try {
-    & $parseScript -Path $folderPath -OutputCsv $OutputFile -DeleteOriginal $true
+    & $parseScript -Path $folderPath -Recursive $true -OutputCsv $OutputFile -DeleteOriginal $true
 } catch {
     Write-Error "parse_dmarc_report.ps1 failed: $($_.Exception.Message)"
     $ErrorActionPreference = $oldErrorActionPreference

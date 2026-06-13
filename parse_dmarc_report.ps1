@@ -238,8 +238,8 @@ foreach ($file in $files) {
             Remove-Item -Path $file.FullName -Force
             Write-Host "Deleted original file: $($file.FullName)"
 
-            # If the directory is now empty after deletion, remove it as well.
-            if (-not (Get-ChildItem -Path $fileDirectory -File)) {
+            # If the directory is now empty after deletion and is not the directory given as this script's parameter, remove it as well.
+            if (-not (Get-ChildItem -Path $fileDirectory -File) -and $fileDirectory -ne $Path) {
                 Remove-Item -Path $fileDirectory -Force
                 Write-Host "Deleted empty directory: $fileDirectory"
             }

@@ -2,6 +2,24 @@
 
 This repository contains PowerShell helper scripts for working with DMARC aggregate report files.
 
+## Compatibility
+These scripts are compatible with PowerShell version 3 and higher. This means they are compatible with the following operating systems:
+ - Windows 7 and newer
+ - MacOS
+ - Linux
+ 
+*PowerShell must be installed to use these scripts with MacOS and Linux.*
+
+If using the extraction script, please note:
+- `.zip` and `.gz` file extraction works on all operating systems.
+- `.tar.gz` and `.tar.bz2` extraction require the external `tar` command to be available in your PowerShell environment.
+
+## Installation
+
+1. If you are not running these scripts on Windows, make sure you have PowerShell installed. It can be found [here](https://learn.microsoft.com/en-us/powershell/scripting/install/install-powershell?view=powershell-7.6).
+2. Clone or download all of the files in this repository to the *same* folder on the computer.
+3. Run the scripts as per the instructions below.
+
 ## `run_dmarc_workflow.ps1`
 
 Runs the full workflow for a DMARC report folder.
@@ -26,8 +44,6 @@ Behavior:
 
 Known limitations:
 - `.tar.gz` and `.tar.bz2` extraction require the external `tar` command to be available.
-- ZIP extraction uses the Windows Shell COM object, which is only available on Windows.
-- `.gz` extraction works on all platforms with automatic fallback from `gzip` command to .NET GZipStream.
 - If the output CSV path is invalid or not writable, the workflow may fail.
 
 ## Helper Scripts
@@ -64,12 +80,12 @@ Notes:
 - Archives are extracted into a subfolder named after the archive base name.
 - This script does not recurse into subdirectories.
 - It only supports `.zip`, `.gz`, `.tar.gz`, and `.tar.bz2` archives.
+- `.zip` extraction works cross-platform on PowerShell Core via `Expand-Archive`, with a .NET `System.IO.Compression.ZipFile` fallback. Windows PowerShell may still use the Shell COM fallback if necessary.
 - `.gz` file extraction uses the `gzip` command if available (macOS, Linux, or Windows with gzip), otherwise it falls back to .NET's GZipStream, which requires .NET to be installed.
 
 Troubleshooting:
 - Ensure the directory path is valid and contains supported archives.
 - `tar` must be available in your PowerShell environment for `.tar.gz` and `.tar.bz2` extraction.
-- `.gz` extraction works on all platforms; if `gzip` is not available, the script will use .NET GZipStream automatically.
 - If extraction fails, inspect the error message and verify the archive is not corrupted.
 
 ### `parse_dmarc_report.ps1`

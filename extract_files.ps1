@@ -1,5 +1,5 @@
 # This script extracts any archive files in the directory specified by the parameter $Directory.
-# It supports .zip, .tar.gz, and .tar.bz2 files.
+# It supports .zip, .gz, .tar.gz, and .tar.bz2 files.
 # If the optional parameter $DeleteOriginal is set to $true, the original archive files will be deleted after extraction.
 
 param (
@@ -26,6 +26,7 @@ function Get-ArchiveFiles {
     Get-ChildItem -Path $path -ErrorAction SilentlyContinue | Where-Object {
         -not $_.PSIsContainer -and (
             $_.Name.ToLowerInvariant().EndsWith('.zip') -or
+            $_.Name.ToLowerInvariant().EndsWith('.gz') -or
             $_.Name.ToLowerInvariant().EndsWith('.tar.gz') -or
             $_.Name.ToLowerInvariant().EndsWith('.tar.bz2')
         )
@@ -60,6 +61,39 @@ function Expand-ZipArchive {
     $destination.CopyHere($zip.Items(), 0x10)
 }
 
+# Function to extract .gz files using gzip if available, falling back to .NET GZipStream.
+function Expand-GzFile {
+    param (
+        [string]$GzPath,
+        [string]$DestinationPath
+    )
+
+    # Check if the gzip command is available on the system (macOS, Linux, or Windows with gzip installed).
+    if (Get-Command gzip -ErrorAction SilentlyContinue) {
+        try {
+            # Use gzip to extract the .gz file. The -d flag tells gzip to decompress the file, and -c outputs the result to stdout.
+            gzip -d -c $GzPath > $DestinationPath
+        } catch {
+            throw "gzip command failed: $($_.Exception.Message)"
+        }
+    } else {
+        try {
+            # Fall back to .NET's GZipStream if gzip is not available. (This works on Windows without external tools).
+            $sourceStream = [System.IO.File]::OpenRead($GzPath)
+            $destinationStream = [System.IO.File]::Create($DestinationPath)
+            $gzipStream = [System.IO.Compression.GZipStream]::new($sourceStream, [System.IO.Compression.CompressionMode]::Decompress)
+            
+            $gzipStream.CopyTo($destinationStream)
+            
+            $gzipStream.Dispose()
+            $destinationStream.Dispose()
+            $sourceStream.Dispose()
+        } catch {
+            throw "Failed to extract .gz file: $GzPath. Error: $($_.Exception.Message)"
+        }
+    }
+}
+
 # Get all archive files in the directory.
 $archiveFiles = Get-ArchiveFiles -DirectoryPath $Directory
 
@@ -82,7 +116,7 @@ foreach ($file in $archiveFiles) {
             } catch {
                 throw $_
             }
-        
+
         } elseif ($file.Name.ToLowerInvariant().EndsWith('.tar.gz')) {
             # Extract .tar.gz files if tar is available.
             if (Get-Command tar -ErrorAction SilentlyContinue) {
@@ -97,6 +131,14 @@ foreach ($file in $archiveFiles) {
                 tar -xjf $filePath -C $Directory
             } else {
                 Write-Warning "tar command not found; cannot extract .tar.bz2 file: $fileName. Please install tar or extract this file manually."
+            }
+        
+        } elseif ($file.Name.ToLowerInvariant().EndsWith('.gz')) {
+            # Extract .gz files. .tar.gz files are handled by the tar command, so this case is for standalone .gz files.
+            try {
+                Expand-GzFile -GzPath $filePath -DestinationPath $destinationPath
+            } catch {
+                throw $_
             }
         
         } else {

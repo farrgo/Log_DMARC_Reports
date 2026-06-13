@@ -27,6 +27,7 @@ Behavior:
 Known limitations:
 - `.tar.gz` and `.tar.bz2` extraction require the external `tar` command to be available.
 - ZIP extraction uses the Windows Shell COM object, which is only available on Windows.
+- `.gz` extraction works on all platforms with automatic fallback from `gzip` command to .NET GZipStream.
 - If the output CSV path is invalid or not writable, the workflow may fail.
 
 ## Helper Scripts
@@ -38,6 +39,7 @@ Extracts archive files from a given directory.
 
 Supported archive types:
 - `.zip`
+- `.gz`
 - `.tar.gz`
 - `.tar.bz2`
 
@@ -61,11 +63,13 @@ Notes:
 - This script can be used as a standalone script if you just want to extract archived files.
 - Archives are extracted into a subfolder named after the archive base name.
 - This script does not recurse into subdirectories.
-- It only supports `.zip`, `.tar.gz`, and `.tar.bz2` archives.
+- It only supports `.zip`, `.gz`, `.tar.gz`, and `.tar.bz2` archives.
+- `.gz` file extraction uses the `gzip` command if available (macOS, Linux, or Windows with gzip), otherwise it falls back to .NET's GZipStream, which requires .NET to be installed.
 
 Troubleshooting:
 - Ensure the directory path is valid and contains supported archives.
 - `tar` must be available in your PowerShell environment for `.tar.gz` and `.tar.bz2` extraction.
+- `.gz` extraction works on all platforms; if `gzip` is not available, the script will use .NET GZipStream automatically.
 - If extraction fails, inspect the error message and verify the archive is not corrupted.
 
 ### `parse_dmarc_report.ps1`

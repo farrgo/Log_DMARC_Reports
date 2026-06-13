@@ -33,7 +33,7 @@ function Get-ArchiveFiles {
     }
 }
 
-# Function to extract .zip files using the Shell.Application COM object.
+# Function to extract .zip files in a cross-platform way.
 function Expand-ZipArchive {
     param (
         [string]$ZipPath,
@@ -45,20 +45,49 @@ function Expand-ZipArchive {
         New-Item -ItemType Directory -Path $DestinationPath | Out-Null
     }
 
-    # Use the Shell.Application COM object to extract the ZIP file. This method is compatible with Windows and does not require external tools.
-    $shell = New-Object -ComObject Shell.Application
-    $zip = $shell.NameSpace($ZipPath)
-    if (-not $zip) {
-        throw "Unable to open ZIP archive: $ZipPath"
+    # Prefer the built-in Expand-Archive cmdlet when available, because it works across PowerShell Core on Windows, macOS, and Linux.
+    if (Get-Command Expand-Archive -ErrorAction SilentlyContinue) {
+        try {
+            Expand-Archive -Path $ZipPath -DestinationPath $DestinationPath -Force
+            return
+        } catch {
+            Write-Warning "Expand-Archive failed for $ZipPath: $($_.Exception.Message)"
+        }
     }
 
-    $destination = $shell.NameSpace($DestinationPath)
-    if (-not $destination) {
-        throw "Unable to open destination folder: $DestinationPath"
+    # If Expand-Archive is unavailable or fails, use .NET ZipFile as a fallback.
+    try {
+        if (-not ([System.Type]::GetType('System.IO.Compression.ZipFile'))) {
+            Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue | Out-Null
+        }
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($ZipPath, $DestinationPath)
+        return
+    } catch {
+        Write-Warning "Attempt to extract ZIP with .NET ZipFile failed: $($_.Exception.Message)"
     }
 
-    # Extract the contents of the ZIP file to the destination folder. The 0x10 flag suppresses progress dialogs and error messages.
-    $destination.CopyHere($zip.Items(), 0x10)
+    # Last resort on Windows: use Shell.Application if available.
+    if ($PSVersionTable.Platform -eq 'Win32NT' -and (Get-Command New-Object -ErrorAction SilentlyContinue)) {
+        try {
+            $shell = New-Object -ComObject Shell.Application
+            $zip = $shell.NameSpace($ZipPath)
+            if (-not $zip) {
+                throw "Unable to open ZIP archive: $ZipPath"
+            }
+
+            $destination = $shell.NameSpace($DestinationPath)
+            if (-not $destination) {
+                throw "Unable to open destination folder: $DestinationPath"
+            }
+
+            $destination.CopyHere($zip.Items(), 0x10)
+            return
+        } catch {
+            throw "Unable to extract ZIP archive: $ZipPath. Error: $($_.Exception.Message)"
+        }
+    }
+
+    throw "No supported ZIP extraction method is available on this platform. Please install PowerShell Core or ensure Expand-Archive / System.IO.Compression.FileSystem are available."
 }
 
 # Function to extract .gz files using gzip if available, falling back to .NET GZipStream.
@@ -76,6 +105,7 @@ function Expand-GzFile {
         } catch {
             throw "gzip command failed: $($_.Exception.Message)"
         }
+
     } else {
         try {
             # Fall back to .NET's GZipStream if gzip is not available. (This works on Windows without external tools).
@@ -92,6 +122,7 @@ function Expand-GzFile {
             throw "Failed to extract .gz file: $GzPath. Error: $($_.Exception.Message)"
         }
     }
+
 }
 
 # Get all archive files in the directory.

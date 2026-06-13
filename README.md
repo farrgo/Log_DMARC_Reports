@@ -15,6 +15,9 @@ Parameters:
 - `Path` - Directory to scan for archive files and DMARC XML reports.
 - `OutputFile` - CSV file path where parsed report rows will be written.
 
+Sample output file:
+![Sample Output File](Output_File.PNG)
+
 Behavior:
 - Extracts supported archives in the folder, deleting archive files after extraction.
 - Parses extracted DMARC XML files in the same folder.
@@ -55,6 +58,7 @@ Parameters:
 - `DeleteOriginal` - Optional. If set to `$true`, deletes archive files after extraction.
 
 Notes:
+- This script can be used as a standalone script if you just want to extract archived files.
 - Archives are extracted into a subfolder named after the archive base name.
 - This script does not recurse into subdirectories.
 - It only supports `.zip`, `.tar.gz`, and `.tar.bz2` archives.

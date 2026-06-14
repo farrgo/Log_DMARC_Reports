@@ -51,7 +51,7 @@ function Expand-ZipArchive {
             Expand-Archive -Path $ZipPath -DestinationPath $DestinationPath -Force
             return
         } catch {
-            Write-Warning "Expand-Archive failed for $ZipPath: $($_.Exception.Message)"
+            Write-Warning "Expand-Archive failed for ${ZipPath}: $($_.Exception.Message)"
         }
     }
 
